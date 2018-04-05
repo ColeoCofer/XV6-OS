@@ -94,10 +94,18 @@ sys_halt(void)
   return 0;
 }
 
+#ifdef CS333_P1
+
 int
 sys_date(void)
 {
   struct rtcdate * d;
+  if (argptr(0, (void*)&d, sizeof(&d)) < 0)
+    return -1;
+
+  cmostime(d);
+
+  return 0;
 }
 
-
+#endif

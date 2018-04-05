@@ -20,6 +20,9 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+#ifdef CS333_P1
+static void printElapsedTime(int elapsedTime);
+#endif
 
 #ifdef CS333_P3P4
 static void initProcessLists(void);
@@ -77,6 +80,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  
+  #ifdef CS333_P1
+  p->start_ticks = ticks; //Set the starting ticks on alloc
+  #endif
 
   return p;
 }
@@ -514,7 +521,17 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+
+    #ifdef CS333_P1
+    cprintf("PID\tState\tName\tElapsed\t PCs\n");
+    #endif
+
+    cprintf("%d\t%s\t%s", p->pid, state, p->name); 
+
+    #ifdef CS333_P1
+    printElapsedTime(ticks - p->start_ticks);
+    #endif
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -523,6 +540,20 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+#ifdef CS333_P1
+
+//Prints the elapsed time in seconds
+//accurate to the millisecond
+static void
+printElapsedTime(int elapsed_time)
+{
+  int decimalNum = elapsed_time / 1000;
+  int remainder = elapsed_time % 1000;
+  cprintf("\t%d.%d\t", decimalNum, remainder);
+}
+
+#endif
 
 
 #ifdef CS333_P3P4

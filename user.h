@@ -41,4 +41,4 @@ int atoi(const char*);
 
 #ifdef CS333_P1
 int date(struct rtcdate*);
-#endi
+#endif
