@@ -87,9 +87,17 @@ sys_uptime(void)
 
 //Turn of the computer
 int
-sys_halt(void){
+sys_halt(void)
+{
   cprintf("Shutting down ...\n");
   outw( 0x604, 0x0 | 0x2000);
   return 0;
 }
+
+int
+sys_date(void)
+{
+  struct rtcdate * d;
+}
+
 
