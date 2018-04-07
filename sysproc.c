@@ -95,7 +95,6 @@ sys_halt(void)
 }
 
 #ifdef CS333_P1
-
 int
 sys_date(void)
 {
@@ -104,8 +103,6 @@ sys_date(void)
     return -1;
 
   cmostime(d);
-
   return 0;
 }
-
 #endif

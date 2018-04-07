@@ -514,6 +514,10 @@ procdump(void)
   char *state;
   uint pc[10];
 
+  #ifdef CS333_P1
+  cprintf("PID\tState\tName\tElapsed\t PCs\n");
+  #endif
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -521,10 +525,6 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-
-    #ifdef CS333_P1
-    cprintf("PID\tState\tName\tElapsed\t PCs\n");
-    #endif
 
     cprintf("%d\t%s\t%s", p->pid, state, p->name); 
 
@@ -542,7 +542,6 @@ procdump(void)
 }
 
 #ifdef CS333_P1
-
 //Prints the elapsed time in seconds
 //accurate to the millisecond
 static void
@@ -550,9 +549,24 @@ printElapsedTime(int elapsed_time)
 {
   int decimalNum = elapsed_time / 1000;
   int remainder = elapsed_time % 1000;
-  cprintf("\t%d.%d\t", decimalNum, remainder);
-}
 
+  if (remainder == 0)
+  {
+    cprintf("\t%d.000\t", decimalNum);
+  }
+  else if (remainder < 10)
+  {
+    cprintf("\t%d.00%d\t", decimalNum, remainder);
+  }
+  else if (remainder < 100)
+  {
+    cprintf("\t%d.0%d\t", decimalNum, remainder);
+  } 
+  else
+  {
+    cprintf("\t%d.%d\t", decimalNum, remainder);
+  }
+}
 #endif
 
 
