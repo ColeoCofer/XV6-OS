@@ -104,6 +104,15 @@ extern int sys_halt(void);
 extern int sys_date(void);
 #endif
 
+#ifdef CS333_P2
+extern uint sys_getuid(void);
+extern uint sys_getgid(void);
+extern uint sys_ppid(void);
+extern int setuid(void);
+extern int setgid(void);
+#endif
+
+//Function dispatch table for syscalls
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -127,9 +136,19 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_halt]    sys_halt,
+
 #ifdef CS333_P1
 [SYS_date]    sys_date,
 #endif
+
+#ifdef CS333_P2
+[SYS_getuid]  sys_getuid,
+[SYS_getgid]  sys_getgid,
+[SYS_getppid] sys_getppid,
+[SYS_setuid]  sys_setuid,
+[SYS_setgid]  sys_setgid,
+#endif
+
 };
 
 #ifdef PRINT_SYSCALLS

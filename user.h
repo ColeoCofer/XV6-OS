@@ -40,5 +40,13 @@ void free(void*);
 int atoi(const char*);
 
 #ifdef CS333_P1
-int date(struct rtcdate*);
+int date(struct rtcdate*); //Display the date
+#endif
+
+#ifdef CS333_P2
+uint getuid(void);         //UID of the current process
+uint getgid(void);         //GID of the current process
+uint getppid(void);        //Process ID of the parent process
+int setuid(uint);          //Set the UID
+int setgid(uint);          //Set the GID
 #endif

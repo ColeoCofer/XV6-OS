@@ -106,3 +106,56 @@ sys_date(void)
   return 0;
 }
 #endif
+
+
+#ifdef CS333_P2
+
+uint
+sys_getuid(void)
+{
+  return proc->uid;
+}
+
+uint
+sys_getgid(void)
+{
+  return proc->gid;
+}
+
+uint
+sys_getppid(void)
+{
+  //There was an example of this in the book I think?
+  //Using fork or what ever. 
+
+  //If the process is init, then it should display
+  //init as the parent of init.
+  
+  //Also, fork lives in proc.c, and you'll probably
+  //have to do some stuff I think. n
+  return 0;
+}
+
+int
+setuid(uint newuid)
+{
+  //Only take values 0 <= x <= 32767
+  if (newuid < 0 || newuid > 32767)
+    return -1;
+
+  proc->uid = newuid;
+  return 0;
+}
+
+int
+setgid(uint newgid)
+{
+
+  if (newuid < 0 || newuid > 32767)
+    return -1;
+
+  proc->gid = newgid;
+  return 0;
+}
+
+#endif
