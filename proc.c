@@ -178,6 +178,12 @@ fork(void)
   np->state = RUNNABLE;
   release(&ptable.lock);
 
+  #ifdef CS333_P2
+  //Give the new process the old old process's uid and gid
+  np->uid = proc->uid;
+  np->gid = proc->gid;
+  #endif
+
   return pid;
 }
 

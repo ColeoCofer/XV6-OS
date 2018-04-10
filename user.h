@@ -44,7 +44,7 @@ int date(struct rtcdate*); //Display the date
 #endif
 
 #ifdef CS333_P2
-uint getuid(void);         //UID of the current process
+uint getuid(void);         //UID of the current process 
 uint getgid(void);         //GID of the current process
 uint getppid(void);        //Process ID of the parent process
 int setuid(uint);          //Set the UID

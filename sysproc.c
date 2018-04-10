@@ -125,19 +125,11 @@ sys_getgid(void)
 uint
 sys_getppid(void)
 {
-  //There was an example of this in the book I think?
-  //Using fork or what ever. 
-
-  //If the process is init, then it should display
-  //init as the parent of init.
-  
-  //Also, fork lives in proc.c, and you'll probably
-  //have to do some stuff I think. n
-  return 0;
+  return proc->parent->pid;
 }
 
 int
-setuid(uint newuid)
+sys_setuid(uint newuid)
 {
   //Only take values 0 <= x <= 32767
   if (newuid < 0 || newuid > 32767)
@@ -148,10 +140,10 @@ setuid(uint newuid)
 }
 
 int
-setgid(uint newgid)
+sys_setgid(uint newgid)
 {
 
-  if (newuid < 0 || newuid > 32767)
+  if (newgid < 0 || newgid > 32767)
     return -1;
 
   proc->gid = newgid;
