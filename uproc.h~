@@ -1,0 +1,4 @@
+#ifdef CS333_P2
+#define STRMAX 32
+
+#endif

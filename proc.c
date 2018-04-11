@@ -85,9 +85,9 @@ found:
   p->start_ticks = ticks; //Set the starting ticks on alloc
   #endif
 
-  #ifdef CS333_P2
-  p->cpu_ticks_total = 0; 
-  p->cpu_ticks_in = 0;
+#ifdef CS333_P2 
+  p->cpu_ticks_total = 0; //Total elapsed ticks
+  p->cpu_ticks_in = 0;    //Ticks when scheduled
   #endif
 
   return p;
@@ -339,6 +339,7 @@ scheduler(void)
       p->state = RUNNING;
 
       #ifdef CS333_P2
+      //A runnable process is being put into the CPU here
       //Subtract the ticks_in from the global/total ticks
       proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
       #endif
@@ -385,6 +386,7 @@ sched(void)
   intena = cpu->intena;
 
   #ifdef CS333_P2
+  //Process is being removed from the CPU here
   proc->cpu_ticks_in = ticks; //Set the ticks before the contexswitch
   #endif
 
@@ -539,7 +541,7 @@ procdump(void)
 {
   int i;
   struct proc *p;
-  char *state;
+  char *state; 
   uint pc[10];
 
   #ifdef CS333_P1
