@@ -9,6 +9,10 @@ struct spinlock;
 struct stat;
 struct superblock;
 
+#ifdef CS333_P2
+struct uproc;
+#endif
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -118,6 +122,10 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+
+#ifdef CS333_P2
+int             getprocs(uint max, struct uproc* table);
+#endif
 
 // swtch.S
 void            swtch(struct context**, struct context*);

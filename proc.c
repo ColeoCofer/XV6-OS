@@ -7,6 +7,10 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -85,7 +89,7 @@ found:
   p->start_ticks = ticks; //Set the starting ticks on alloc
   #endif
 
-#ifdef CS333_P2 
+  #ifdef CS333_P2 
   p->cpu_ticks_total = 0; //Total elapsed ticks
   p->cpu_ticks_in = 0;    //Ticks when scheduled
   #endif
@@ -193,6 +197,8 @@ fork(void)
   //Give the new process the old old process's uid and gid
   np->uid = proc->uid;
   np->gid = proc->gid;
+  np->cpu_ticks_total = 0;  
+  np->cpu_ticks_in = 0;
   #endif
 
   return pid;
@@ -537,7 +543,7 @@ static char *states[] = {
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 void
-procdump(void)
+procdump(void) 
 {
   int i;
   struct proc *p;
@@ -545,7 +551,7 @@ procdump(void)
   uint pc[10];
 
   #ifdef CS333_P1
-  cprintf("PID\tState\tName\tElapsed\t PCs\n");
+  cprintf("PID\tState\tName\tElapsed\t PCs\n"); 
   #endif
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){

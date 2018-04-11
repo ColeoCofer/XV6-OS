@@ -160,4 +160,14 @@ sys_setgid(void)
   return 0;
 }
 
+int
+sys_getprocs(uint max, struct uproc* table)
+{
+
+  //Do I need to call getprocs() from here?
+  //Is that even a thing?
+  
+  return 0; //Stub Code
+}
+
 #endif
