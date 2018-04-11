@@ -85,6 +85,11 @@ found:
   p->start_ticks = ticks; //Set the starting ticks on alloc
   #endif
 
+  #ifdef CS333_P2
+  p->cpu_ticks_total = 0; 
+  p->cpu_ticks_in = 0;
+  #endif
+
   return p;
 }
 
@@ -293,7 +298,7 @@ wait(void)
 int
 wait(void)
 {
-
+  
   return 0;  // placeholder
 }
 #endif
@@ -332,6 +337,12 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
+      #ifdef CS333_P2
+      //Subtract the ticks_in from the global/total ticks
+      proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
+      #endif
+
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -352,7 +363,7 @@ scheduler(void)
 void
 scheduler(void)
 {
-
+  
 }
 #endif
 
@@ -372,6 +383,11 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+
+  #ifdef CS333_P2
+  proc->cpu_ticks_in = ticks; //Set the ticks before the contexswitch
+  #endif
+
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
