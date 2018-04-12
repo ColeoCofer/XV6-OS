@@ -7,8 +7,8 @@ struct uproc {
   uint uid;
   uint gid;
   uint ppid;
-  uint elapsed_ticks;
-  uint CPU_total_ticks;
+  uint elapsed_ticks;    //As a floating point number
+  uint CPU_total_ticks;  //As a floating point number
   char state[STRMAX];
   uint size;
   char name[STRMAX];

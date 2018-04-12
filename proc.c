@@ -610,7 +610,13 @@ procdump(void)
 static void
 procDumpP2(struct proc *p, char *state, int elapsedTime) 
 {
+  //This is the order of the header
   //cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n");
+
+  int decimalNum = elapsedTime / 1000;
+  int remainder = elapsedTime % 1000;
+
+  //Find out the ppid
   uint ppid = 0;
   if (!p->parent)
     ppid = 1;
@@ -618,7 +624,31 @@ procDumpP2(struct proc *p, char *state, int elapsedTime)
     ppid = p->parent->pid;
 
   cprintf("%d\t%s\t%d\t%d\t%d", p->pid, p->name, p->uid, p->gid, ppid);
+  
+  //Print the elapsed time
+  if (remainder == 0)
+    cprintf("\t%d.000\t", decimalNum);
+  else if (remainder < 10)
+    cprintf("\t%d.00%d\t", decimalNum, remainder);
+  else if (remainder < 100)
+    cprintf("\t%d.0%d\t", decimalNum, remainder);
+  else
+    cprintf("\t%d.%d\t", decimalNum, remainder);
+  
+  //CPU tick printing
+  uint cpuNum = p->cpu_ticks_total / 1000;
+  uint cpuRemainder = p->cpu_ticks_total % 1000;
+  
+  if (cpuRemainder == 0) 
+    cprintf("%d.000\t", cpuNum);
+  else if (cpuRemainder < 10)
+    cprintf("%d.00%d\t", cpuNum, cpuRemainder);
+  else if (cpuRemainder < 100)
+    cprintf("%d.0%d\t", cpuNum, cpuRemainder);
+  else
+    cprintf("%d.%d\t", cpuNum, cpuRemainder);
 
+  cprintf("%s\t%s\t%d\t", state, p->name, p->sz);
 }
 
 #elif defined CS333_P1
@@ -634,21 +664,13 @@ procDumpP1(struct proc *p, char *state, int elapsed_time)
   cprintf("%d\t%s\t%s", p->pid, state, p->name); 
 
   if (remainder == 0)
-  {
     cprintf("\t%d.000\t", decimalNum);
-  }
   else if (remainder < 10)
-  {
     cprintf("\t%d.00%d\t", decimalNum, remainder);
-  }
   else if (remainder < 100)
-  {
     cprintf("\t%d.0%d\t", decimalNum, remainder);
-  } 
   else
-  {
     cprintf("\t%d.%d\t", decimalNum, remainder);
-  }
 }
 
 #else
