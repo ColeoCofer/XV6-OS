@@ -49,5 +49,4 @@ uint getgid(void);         //GID of the current process
 uint getppid(void);        //Process ID of the parent process
 int setuid(uint);          //Set the UID
 int setgid(uint);          //Set the GID
-//int getprocs(uint max, struct uproc* table); //Get processor information
 #endif

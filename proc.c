@@ -24,16 +24,23 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-#ifdef CS333_P1
-static void printElapsedTime(int elapsedTime);
-#endif
-
-#ifdef CS333_P3P4
+#if defined CS333_P3P4
 static void initProcessLists(void);
 static void initFreeList(void);
 static int stateListAdd(struct proc** head, struct proc** tail, struct proc* p);
 static int stateListRemove(struct proc** head, struct proc** tail, struct proc* p);
+static void procDumpP3P4();
+#elif defined CS333_P2
+static void procDumpP2(struct proc *p, char *state, int elapsedTime);
+#elif CS333_P1
+static void procDumpP1(struct proc *p, char *state, int elapsed_time);
+#else
+static void procDump0(struct proc *p, char * state);
 #endif
+
+
+
+
 
 void
 pinit(void)
@@ -545,14 +552,26 @@ static char *states[] = {
 void
 procdump(void) 
 {
+  #ifndef CS333_P2
   int i;
+  #endif
+
+
   struct proc *p;
   char *state; 
   uint pc[10];
 
-  #ifdef CS333_P1
-  cprintf("PID\tState\tName\tElapsed\t PCs\n"); 
+  //This code was provided by Mark Morrissey (but was altered)
+  #if defined (CS333_P3P4)
+  #elif defined (CS333_P2)
+  #define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+  #elif defined (CS333_P1)
+  #define HEADER "PID\tState\tName\tElapsed\t PCs\n"
+  #else
+  #define HEADER "PID\tState\tName\t PCs\n"
   #endif
+
+  cprintf(HEADER);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
@@ -562,29 +581,51 @@ procdump(void)
     else
       state = "???";
 
-    cprintf("%d\t%s\t%s", p->pid, state, p->name); 
-
-    #ifdef CS333_P1
-    printElapsedTime(ticks - p->start_ticks);
+    #if defined (CS333_P3P4)
+    //Do some P3P4 stuff
+    #elif defined (CS333_P2)
+    procDumpP2(p, state, ticks - p->start_ticks);
+    #elif defined (CS333_P1)
+    procDumpP1(p, state, ticks - p->start_ticks);
+    #else
+    procDump0(p, state);
     #endif
-
+    
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
+
+      #ifndef CS333_P2
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
+      #endif
     }
     cprintf("\n");
   }
 }
 
-#ifdef CS333_P1
+#if defined CS333_P3P4
+//static void procDumpP3P4 ...
+#elif defined CS333_P2
+
+static void
+procDumpP2(struct proc *p, char *state, int elapsedTime) 
+{
+  //cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"); //Use this as ref
+  cprintf("%d\t%s\t%d\t%d", p->pid, p->name, p->uid, p->gid);
+
+}
+
+#elif defined CS333_P1
 //Prints the elapsed time in seconds
 //accurate to the millisecond
 static void
-printElapsedTime(int elapsed_time)
+procDumpP1(struct proc *p, char *state, int elapsed_time)
 {
   int decimalNum = elapsed_time / 1000;
+
   int remainder = elapsed_time % 1000;
+
+  cprintf("%d\t%s\t%s", p->pid, state, p->name); 
 
   if (remainder == 0)
   {
@@ -602,6 +643,13 @@ printElapsedTime(int elapsed_time)
   {
     cprintf("\t%d.%d\t", decimalNum, remainder);
   }
+}
+
+#else
+static void
+procDump0(struct proc *p, char * state)
+{
+  cprintf("%d\t%s\t%s", p->pid, state, p->name); 
 }
 #endif
 
