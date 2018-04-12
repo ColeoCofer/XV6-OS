@@ -610,8 +610,14 @@ procdump(void)
 static void
 procDumpP2(struct proc *p, char *state, int elapsedTime) 
 {
-  //cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"); //Use this as ref
-  cprintf("%d\t%s\t%d\t%d", p->pid, p->name, p->uid, p->gid);
+  //cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n");
+  uint ppid = 0;
+  if (!p->parent)
+    ppid = 1;
+  else
+    ppid = p->parent->pid;
+
+  cprintf("%d\t%s\t%d\t%d\t%d", p->pid, p->name, p->uid, p->gid, ppid);
 
 }
 

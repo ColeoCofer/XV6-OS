@@ -125,7 +125,15 @@ sys_getgid(void)
 uint
 sys_getppid(void)
 {
-  return proc->parent->pid;
+  //  if (!proc->parent)
+  //return proc->pid;
+  //else
+  // return proc->parent->pid;
+ 
+  if (!proc->parent)
+    return 1;
+  else
+    return proc->parent->pid;  
 }
 
 int
