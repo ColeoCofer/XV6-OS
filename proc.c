@@ -40,8 +40,6 @@ static void procDump0(struct proc *p, char * state);
 
 
 
-
-
 void
 pinit(void)
 {
@@ -204,8 +202,6 @@ fork(void)
   //Give the new process the old old process's uid and gid
   np->uid = proc->uid;
   np->gid = proc->gid;
-  np->cpu_ticks_total = 0;  
-  np->cpu_ticks_in = 0;
   #endif
 
   return pid;
@@ -256,7 +252,7 @@ exit(void)
   sched();
   panic("zombie exit");
 }
-#else
+#else 
 void
 exit(void)
 {
@@ -649,6 +645,55 @@ procDumpP2(struct proc *p, char *state, int elapsedTime)
     cprintf("%d.%d\t", cpuNum, cpuRemainder);
 
   cprintf("%s\t%s\t%d\t", state, p->name, p->sz);
+}
+
+int
+getprocs(uint max, struct uproc* table)
+{
+
+  struct proc * currProc;
+  acquire(&ptable.lock);
+
+  //Traverse the ptable of size uproc * max
+  int i = 0;
+  for (currProc = ptable.proc; currProc < &ptable.proc[NPROC] && i < max; currProc++)
+  {
+    if (currProc->state != UNUSED)
+    {
+
+      //Check if the process is in a unused state
+      //And if so then set the data members
+      
+      table[i].pid = currProc->pid;
+      table[i].uid = currProc->uid;
+      table[i].gid = currProc->gid;
+      !currProc->parent ? table[i].ppid = currProc->pid : currProc->parent->pid;
+      table[i].elapsed_ticks = ticks - currProc->start_ticks;
+      table[i].CPU_total_ticks = currProc->cpu_ticks_total;
+      safestrcpy(table[i].name, currProc->name, sizeof(currProc->name));
+      table[i].size = currProc->sz;
+      
+      //Assign the correct state
+      if (currProc->state == UNUSED)
+        safestrcpy(table[i].state, states[UNUSED], sizeof(states[UNUSED])); 
+      else if (currProc->state == EMBRYO)
+        safestrcpy(table[i].state, states[EMBRYO], sizeof(states[EMBRYO])); 
+      else if (currProc->state == SLEEPING)
+        safestrcpy(table[i].state, states[SLEEPING], sizeof(states[SLEEPING])); 
+      else if (currProc->state == RUNNABLE)
+        safestrcpy(table[i].state, states[RUNNABLE], sizeof(states[RUNNABLE])); 
+      else if (currProc->state == RUNNING)
+        safestrcpy(table[i].state, states[RUNNING], sizeof(states[RUNNING])); 
+      else if (currProc->state == ZOMBIE)
+        safestrcpy(table[i].state, states[ZOMBIE], sizeof(states[ZOMBIE])); 
+      
+    }
+    ++i;
+  }
+  
+  release(&ptable.lock);
+
+  return i;
 }
 
 #elif defined CS333_P1

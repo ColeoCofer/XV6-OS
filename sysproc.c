@@ -130,11 +130,6 @@ sys_getppid(void)
     return proc->pid;
   else
     return proc->parent->pid;
- 
-  //  if (!proc->parent)
-  //    return 1;
-  //  else
-  //    return proc->parent->pid;  
 }
 
 int
@@ -170,20 +165,17 @@ sys_setgid(void)
 }
 
 int
-sys_getprocs(uint max, struct uproc* table)
+sys_getprocs(void)
 {
-  //max -> maximum number of enties that uproc can hold (size of array)  
-  //table = malloc(max * sizeof(&struct uproc));
+  int max;
+  if(argint(0, &max) < 0) 
+    return -1;
 
-  //*** CALL this from ps.c, then you'll have a pointer pointing at
-  //all the data.
-  //Fill it all in with that pointer
-  //Then print it all out
-  
-  //Should return the actual number of entries used in the table on success,
-  //and return -1 if it fails
-  //Test with max = 1, 16, 64, 72 (72 should fail)
-  return 0; //Stub code
+  struct uproc *ptable;
+  if (argptr(1, (void*) &ptable, sizeof(&ptable)) < 0)
+    return -1;
+
+  return getprocs(max, ptable);
 }
 
 #endif
