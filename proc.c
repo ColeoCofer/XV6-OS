@@ -348,8 +348,6 @@ scheduler(void)
       p->state = RUNNING;
 
       #ifdef CS333_P2
-      //A runnable process is being put into the CPU here
-      //Subtract the ticks_in from the global/total ticks
       proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
       #endif
 
@@ -395,7 +393,6 @@ sched(void)
   intena = cpu->intena;
 
   #ifdef CS333_P2
-  //Process is being removed from the CPU here
   proc->cpu_ticks_in = ticks; //Set the ticks before the contexswitch
   #endif
 
@@ -653,13 +650,12 @@ getprocs(uint max, struct uproc* table)
 
   //Traverse the ptable of size uproc * max
   int i = 0;
-  for (currProc = ptable.proc; currProc < &ptable.proc[NPROC] && i < max; currProc++)
+  for (currProc = ptable.proc; currProc < &ptable.proc[NPROC] && i < max; ++currProc)
   {
-    if (currProc->state != UNUSED)
-    {
 
-      //Check if the process is in a unused state
-      //And if so then set the data members
+    //Make sure currProc exists
+    if (currProc->state != UNUSED && currProc)
+    {
       
       table[i].pid = currProc->pid;
       table[i].uid = currProc->uid;
@@ -683,9 +679,9 @@ getprocs(uint max, struct uproc* table)
         safestrcpy(table[i].state, states[RUNNING], sizeof(states[RUNNING])); 
       else if (currProc->state == ZOMBIE)
         safestrcpy(table[i].state, states[ZOMBIE], sizeof(states[ZOMBIE])); 
-      
+
+      ++i;
     }
-    ++i;
   }
   
   release(&ptable.lock);

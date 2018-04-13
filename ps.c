@@ -16,9 +16,6 @@ main(void)
     printf(2, "Error: The ptable has no size.");
     exit();
   }
-
-  //Check if there is actually a table there? I don't know
-  
   
   tableSize = getprocs(maxSize, ptable);
   if (!tableSize)
@@ -33,7 +30,9 @@ main(void)
   printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
   for (i = 0; i < tableSize; ++i)
   {
-
+    //    if (ptable[i].pid != 0)
+    //    {
+    
     elapsedTime = ptable[i].elapsed_ticks;
     elapsedNum =  elapsedTime / 1000;
     elapsedRemainder = elapsedTime % 1000;
@@ -66,13 +65,12 @@ main(void)
 
     
     printf(1, "%s\t%d\t\n",ptable[i].state, ptable[i].size);
-
-    
+    //    }
 
   }
 
   
-  
+  free(ptable);  
   exit();
 }
 #endif

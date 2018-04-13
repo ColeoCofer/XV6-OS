@@ -174,7 +174,7 @@ sys_getprocs(void)
   struct uproc *ptable;
   if (argptr(1, (void*) &ptable, sizeof(&ptable)) < 0)
     return -1;
-
+  
   return getprocs(max, ptable);
 }
 

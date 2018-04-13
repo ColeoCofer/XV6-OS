@@ -25,7 +25,7 @@
 // student system calls begin here. Follow the existing pattern.
 
 //Project 1
-#define SYS_date    SYS_halt+1
+#define SYS_date    SYS_halt+1 
 
 //Project 2
 #define SYS_getuid  SYS_date+1
