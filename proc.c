@@ -548,10 +548,7 @@ static char *states[] = {
 void
 procdump(void) 
 {
-  #ifndef CS333_P2
   int i;
-  #endif
-
 
   struct proc *p;
   char *state; 
@@ -590,7 +587,7 @@ procdump(void)
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
 
-      #ifndef CS333_P2
+      #ifdef CS333_P2
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
       #endif
