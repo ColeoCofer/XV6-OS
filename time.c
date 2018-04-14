@@ -1,3 +1,5 @@
+//Fix all of this jazz dude. Ughz what is going on 
+
 #ifdef CS333_P2
 #include "types.h"
 #include "user.h"
@@ -7,6 +9,12 @@ void printAsFloat(int num);
 int
 main(int argc, char * argv[])
 {
+
+
+
+
+
+
   //Time was ran without a parameter
   if (argc == 1) 
   {
@@ -16,32 +24,32 @@ main(int argc, char * argv[])
   {
 
     uint startTime, endTime, totalTime;
-    int pid = getpid();    
+    int pid; // = getpid();    
     
-    startTime = uptime(); //Hopefully this is correct?
-    fork();
+    startTime = uptime(); //Hopefully this is correct? 
+    pid = fork();
+
 
     //Child
     //Just run the console command 
-    if (pid != getpid())  
+    if (pid == 0)
     {
-      exec(argv[0], &argv[0]); //Execute the process with any arguments it has
-      printf(2, "I don't think you actually typed a command in?");
+      //  exec(argv[0], &argv[0]); //Execute the process with any arguments it has
+      exec(argv[1], argv); //Execute the process with any arguments it has
+      printf(2, "That is not a valid command.");
     }
     
     //Parent
-    if (pid == getpid())
+    else
     {
       wait(); //Wait for the child process to finish
       endTime = uptime(); //Grab the ending time
       totalTime = endTime - startTime;
       printf(1, "\n%s ran in ", argv[1]);
       printAsFloat(totalTime);
-      printf(1, " seconds\n");
-      
+      printf(1, " seconds\n");      
     }
   }
-
   exit();
 }
 
@@ -66,3 +74,4 @@ printAsFloat(int totalTime)
 
 
 #endif
+

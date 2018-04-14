@@ -30,8 +30,6 @@ main(void)
   printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
   for (i = 0; i < tableSize; ++i)
   {
-    //    if (ptable[i].pid != 0)
-    //    {
     
     elapsedTime = ptable[i].elapsed_ticks;
     elapsedNum =  elapsedTime / 1000;
@@ -65,7 +63,7 @@ main(void)
 
     
     printf(1, "%s\t%d\t\n",ptable[i].state, ptable[i].size);
-    //    }
+
 
   }
 

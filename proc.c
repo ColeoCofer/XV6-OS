@@ -654,7 +654,7 @@ getprocs(uint max, struct uproc* table)
   {
 
     //Make sure currProc exists
-    if (currProc->state != UNUSED && currProc)
+    if (currProc->state != UNUSED && currProc->state != EMBRYO)
     {
       
       table[i].pid = currProc->pid;
