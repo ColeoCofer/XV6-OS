@@ -93,3 +93,4 @@ testSched.c
 testuidpid.c
 p2testsuite.c
 uproc.h
+testtime.c
