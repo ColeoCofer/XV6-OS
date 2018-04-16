@@ -21,7 +21,6 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
-
 static void wakeup1(void *chan);
 
 #if defined CS333_P3P4
@@ -32,6 +31,7 @@ static int stateListRemove(struct proc** head, struct proc** tail, struct proc* 
 static void procDumpP3P4();
 #elif defined CS333_P2
 static void procDumpP2(struct proc *p, char *state, int elapsedTime);
+static void printAsFloat(int totalTime);
 #elif CS333_P1
 static void procDumpP1(struct proc *p, char *state, int elapsed_time);
 #else
@@ -348,7 +348,7 @@ scheduler(void)
       p->state = RUNNING;
 
       #ifdef CS333_P2
-      proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
+      proc->cpu_ticks_in = ticks; 
       #endif
 
       swtch(&cpu->scheduler, proc->context);
@@ -393,7 +393,7 @@ sched(void)
   intena = cpu->intena;
 
   #ifdef CS333_P2
-  proc->cpu_ticks_in = ticks; //Set the ticks before the contexswitch
+  proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
   #endif
 
   swtch(&proc->context, cpu->scheduler);
@@ -546,7 +546,7 @@ void
 procdump(void) 
 {
   int i;
-
+  
   struct proc *p;
   char *state; 
   uint pc[10];
@@ -574,7 +574,7 @@ procdump(void)
     #if defined (CS333_P3P4)
     //Do some P3P4 stuff
     #elif defined (CS333_P2)
-    procDumpP2(p, state, ticks - p->start_ticks);
+    procDumpP2(p, state, ticks - p->start_ticks); 
     #elif defined (CS333_P1)
     procDumpP1(p, state, ticks - p->start_ticks);
     #else
@@ -584,28 +584,20 @@ procdump(void)
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
 
-      #ifdef CS333_P2
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
-      #endif
     }
     cprintf("\n");
   }
 }
 
 #if defined CS333_P3P4
-//static void procDumpP3P4 ...
+//Procdump for P3P4 will go here
 #elif defined CS333_P2
 
 static void
 procDumpP2(struct proc *p, char *state, int elapsedTime) 
 {
-  //This is the order of the header
-  //cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n");
-
-  int decimalNum = elapsedTime / 1000;
-  int remainder = elapsedTime % 1000;
-
   //Find out the ppid
   uint ppid = 0;
   if (!p->parent)
@@ -613,37 +605,38 @@ procDumpP2(struct proc *p, char *state, int elapsedTime)
   else
     ppid = p->parent->pid;
 
-  cprintf("%d\t%s\t%d\t%d\t%d", p->pid, p->name, p->uid, p->gid, ppid);
-  
-  //Print the elapsed time
-  if (remainder == 0)
-    cprintf("\t%d.000\t", decimalNum);
-  else if (remainder < 10)
-    cprintf("\t%d.00%d\t", decimalNum, remainder);
-  else if (remainder < 100)
-    cprintf("\t%d.0%d\t", decimalNum, remainder);
-  else
-    cprintf("\t%d.%d\t", decimalNum, remainder);
-  
-  //CPU tick printing
-  uint cpuNum = p->cpu_ticks_total / 1000;
-  uint cpuRemainder = p->cpu_ticks_total % 1000;
-  
-  if (cpuRemainder == 0) 
-    cprintf("%d.000\t", cpuNum);
-  else if (cpuRemainder < 10)
-    cprintf("%d.00%d\t", cpuNum, cpuRemainder);
-  else if (cpuRemainder < 100)
-    cprintf("%d.0%d\t", cpuNum, cpuRemainder);
-  else
-    cprintf("%d.%d\t", cpuNum, cpuRemainder);
+  cprintf("%d\t%s\t%d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid, ppid);
+  printAsFloat(elapsedTime); cprintf("\t");
+  printAsFloat(p->cpu_ticks_total); cprintf("\t");
+  cprintf("%s\t%d\t", state, p->sz);
+}
 
-  cprintf("%s\t%s\t%d\t", state, p->name, p->sz);
+//Prints an integer as a floating point number
+static void
+printAsFloat(int totalTime)
+{   
+  uint timeNum, timeRemainder;
+  
+  timeNum = totalTime / 1000;
+  timeRemainder = totalTime % 1000;
+  
+  if (timeRemainder == 0)
+    cprintf("%d.000", timeNum);
+  else if (timeRemainder < 10)
+    cprintf("%d.00%d", timeNum, timeRemainder);
+  else if (timeRemainder < 100)
+    cprintf("%d.0%d", timeNum, timeRemainder);
+  else
+    cprintf("%d.%d", timeNum, timeRemainder);
 }
 
 int
 getprocs(uint max, struct uproc* table)
 {
+  
+  //Max is above the maximum amount of processes
+  if (max > NPROC)
+    return -1;
 
   struct proc * currProc;
   acquire(&ptable.lock);
@@ -655,30 +648,30 @@ getprocs(uint max, struct uproc* table)
 
     //Make sure currProc exists
     if (currProc->state != UNUSED && currProc->state != EMBRYO)
-    {
-      
+    {      
       table[i].pid = currProc->pid;
       table[i].uid = currProc->uid;
       table[i].gid = currProc->gid;
-      !currProc->parent ? table[i].ppid = currProc->pid : currProc->parent->pid;
+      !currProc->parent ? (table[i].ppid = currProc->pid) : (table[i].ppid = currProc->parent->pid);
+      
       table[i].elapsed_ticks = ticks - currProc->start_ticks;
       table[i].CPU_total_ticks = currProc->cpu_ticks_total;
       safestrcpy(table[i].name, currProc->name, sizeof(currProc->name));
       table[i].size = currProc->sz;
-      
+
       //Assign the correct state
       if (currProc->state == UNUSED)
-        safestrcpy(table[i].state, states[UNUSED], sizeof(states[UNUSED])); 
+        safestrcpy(table[i].state, states[UNUSED], sizeof("unused")); 
       else if (currProc->state == EMBRYO)
-        safestrcpy(table[i].state, states[EMBRYO], sizeof(states[EMBRYO])); 
+        safestrcpy(table[i].state, states[EMBRYO], sizeof("embryo")); 
       else if (currProc->state == SLEEPING)
-        safestrcpy(table[i].state, states[SLEEPING], sizeof(states[SLEEPING])); 
+        safestrcpy(table[i].state, states[SLEEPING], sizeof("sleep ")); 
       else if (currProc->state == RUNNABLE)
-        safestrcpy(table[i].state, states[RUNNABLE], sizeof(states[RUNNABLE])); 
+        safestrcpy(table[i].state, states[RUNNABLE], sizeof("runble")); 
       else if (currProc->state == RUNNING)
-        safestrcpy(table[i].state, states[RUNNING], sizeof(states[RUNNING])); 
+        safestrcpy(table[i].state, states[RUNNING], sizeof("run   ")); 
       else if (currProc->state == ZOMBIE)
-        safestrcpy(table[i].state, states[ZOMBIE], sizeof(states[ZOMBIE])); 
+        safestrcpy(table[i].state, states[ZOMBIE], sizeof("zombie")); 
 
       ++i;
     }

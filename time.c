@@ -1,13 +1,14 @@
 #ifdef CS333_P2
 #include "types.h"
 #include "user.h"
+#include "testtime.h"
 
-void printAsFloat(int num);
+static void printAsFloat(int num);
 
 int
 main(int argc, char * argv[])
 {
-
+  
   //Time was ran without a parameter
   if (argc == 1) 
   {
@@ -24,10 +25,9 @@ main(int argc, char * argv[])
       //Execute the process with any arguments it has
       if (exec(argv[1], argv + 1) < 0)
       {
-        printf(2, "Error: Invalid Command.");
+        printf(2, "Error: Invalid Command.\n");
         exit();
       }
-
     } 
 
     //Wait for the child process to finish
@@ -38,7 +38,7 @@ main(int argc, char * argv[])
     //Fork returned negative PID
     if (pid < 0)
     {
-      printf(2, "Error, Fork returned a negative pid");
+      printf(2, "Error: Fork failed");
     }
 
     printf(1, "%s ran in ", argv[1]);
@@ -50,7 +50,7 @@ main(int argc, char * argv[])
 }
 
 //Prints an integer as a floating point number
-void
+static void
 printAsFloat(int totalTime) 
 {
   uint timeNum, timeRemainder;
