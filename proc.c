@@ -11,9 +11,27 @@
 #include "uproc.h"
 #endif
 
-struct {
-  struct spinlock lock;
+#ifdef CS333_P3
+struct StateLists {
+  struct proc* ready;
+  struct proc* readyTail;
+  struct proc* free;
+  struct proc* freeTail;
+  struct proc* sleep;
+  struct proc* sleepTail;
+  struct proc* zombie;
+  struct proc* zombieTail;
+  struct proc* running;
+  struct proc* runningTail;
+  struct proc* embryo;
+  struct proc* embryoTail;
+};
+#endif
+
+struct { 
+  struct spinlock lock;  
   struct proc proc[NPROC];
+  struct StateLists pLists;
 } ptable;
 
 static struct proc *initproc;
@@ -31,13 +49,12 @@ static int stateListRemove(struct proc** head, struct proc** tail, struct proc* 
 static void procDumpP3P4();
 #elif defined CS333_P2
 static void procDumpP2(struct proc *p, char *state, int elapsedTime);
-static void printAsFloat(int totalTime);
 #elif CS333_P1
 static void procDumpP1(struct proc *p, char *state, int elapsed_time);
 #else
 static void procDump0(struct proc *p, char * state);
 #endif
-
+static void printAsFloat(int totalTime);
 
 
 void
@@ -553,6 +570,7 @@ procdump(void)
 
   //This code was provided by Mark Morrissey (but was altered)
   #if defined (CS333_P3P4)
+  #define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
   #elif defined (CS333_P2)
   #define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
   #elif defined (CS333_P1)
@@ -572,8 +590,8 @@ procdump(void)
       state = "???";
 
     #if defined (CS333_P3P4)
-    //Do some P3P4 stuff
-    #elif defined (CS333_P2)
+    procDumpP3P4(p, state, ticks - p->start_ticks);
+    #elif defined (CS333_P2) 
     procDumpP2(p, state, ticks - p->start_ticks); 
     #elif defined (CS333_P1)
     procDumpP1(p, state, ticks - p->start_ticks);
@@ -592,8 +610,22 @@ procdump(void)
 }
 
 #if defined CS333_P3P4
-//Procdump for P3P4 will go here
-#elif defined CS333_P2
+static void
+procDumpP3P4(struct proc *p, char *state, int elapsedTime) 
+{
+  //Find out the ppid
+  uint ppid = 0;
+  if (!p->parent)
+    ppid = 1;
+  else
+    ppid = p->parent->pid;
+
+  cprintf("%d\t%s\t%d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid, ppid);
+  printAsFloat(elapsedTime); cprintf("\t");
+  printAsFloat(p->cpu_ticks_total); cprintf("\t");
+  cprintf("%s\t%d\t", state, p->sz);
+}
+#elif defined CS333_P2 OR 
 
 static void
 procDumpP2(struct proc *p, char *state, int elapsedTime) 
@@ -611,24 +643,6 @@ procDumpP2(struct proc *p, char *state, int elapsedTime)
   cprintf("%s\t%d\t", state, p->sz);
 }
 
-//Prints an integer as a floating point number
-static void
-printAsFloat(int totalTime)
-{   
-  uint timeNum, timeRemainder;
-  
-  timeNum = totalTime / 1000;
-  timeRemainder = totalTime % 1000;
-  
-  if (timeRemainder == 0)
-    cprintf("%d.000", timeNum);
-  else if (timeRemainder < 10)
-    cprintf("%d.00%d", timeNum, timeRemainder);
-  else if (timeRemainder < 100)
-    cprintf("%d.0%d", timeNum, timeRemainder);
-  else
-    cprintf("%d.%d", timeNum, timeRemainder);
-}
 
 int
 getprocs(uint max, struct uproc* table)
@@ -712,6 +726,24 @@ procDump0(struct proc *p, char * state)
 }
 #endif
 
+//Prints an integer as a floating point number
+static void
+printAsFloat(int totalTime)
+{   
+  uint timeNum, timeRemainder;
+  
+  timeNum = totalTime / 1000;
+  timeRemainder = totalTime % 1000;
+  
+  if (timeRemainder == 0)
+    cprintf("%d.000", timeNum);
+  else if (timeRemainder < 10)
+    cprintf("%d.00%d", timeNum, timeRemainder);
+  else if (timeRemainder < 100)
+    cprintf("%d.0%d", timeNum, timeRemainder);
+  else
+    cprintf("%d.%d", timeNum, timeRemainder);
+}
 
 #ifdef CS333_P3P4
 static int
