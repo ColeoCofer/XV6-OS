@@ -90,7 +90,7 @@ p5-test.c
 p5-test.h
 testsetuid.c
 testSched.c
-testuidpid.c
+testuidgid.c
 p2testsuite.c
 uproc.h
 ps-test.c
