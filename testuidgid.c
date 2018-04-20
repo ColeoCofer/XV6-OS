@@ -10,7 +10,7 @@ static void
 uidTest(uint nval)
 {
   uint uid = getuid();
-  printf(1, "Current UID is: %d\n", uid);
+  printf(1, "Current UID is: %d\n", uid); 
   printf(1, "Setting UID to %d\n", nval);
   if (setuid(nval) < 0)
     printf(2, "Error. Invalid UID: %d\n", nval);
@@ -98,7 +98,7 @@ testuidgid(void)
 
   // getppid test
   ppid = getppid();
-  printf(1, "My parent process is: %d\n", ppid);
+  printf(1, "My parent process is: %d\n", ppid); 
 
   // fork tests to demonstrate UID/GID inheritance
   nval = 111;

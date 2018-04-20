@@ -125,7 +125,7 @@ sys_getgid(void)
 uint
 sys_getppid(void)
 {
-
+ 
   if (!proc->parent)
     return proc->pid;
   else
@@ -157,7 +157,7 @@ sys_setgid(void)
   if (argint(0, &gid) < 0)
     return -1;
 
-  if (gid < 0 || gid > 32767)
+  if (gid < 0 || gid > 32767) 
     return -1;
 
   proc->gid = gid;
@@ -165,7 +165,7 @@ sys_setgid(void)
 }
 
 int
-sys_getprocs(void)
+sys_getprocs(void) 
 {
   int max;
   if(argint(0, &max) < 0) 

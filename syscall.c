@@ -191,9 +191,9 @@ syscall(void)
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     proc->tf->eax = syscalls[num]();
 
-#ifdef PRINT_SYSCALLS
+    #ifdef PRINT_SYSCALLS
     cprintf("%s -> %d\n", syscallnames[num], proc->tf->eax);
-#endif
+    #endif
 
   } else {
     cprintf("%d %s: unknown sys call %d\n",

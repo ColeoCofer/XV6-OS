@@ -1,7 +1,6 @@
 #ifdef CS333_P2
 #include "types.h"
 #include "user.h"
-#include "testtime.h"
 
 static void printAsFloat(int num);
 
@@ -22,6 +21,7 @@ main(int argc, char * argv[])
 
     if (pid == 0)
     {
+
       //Execute the process with any arguments it has
       if (exec(argv[1], argv + 1) < 0)
       {
