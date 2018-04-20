@@ -93,6 +93,4 @@ testSched.c
 testuidpid.c
 p2testsuite.c
 uproc.h
-testprocs.c
-testprocs.h
 ps-test.c
