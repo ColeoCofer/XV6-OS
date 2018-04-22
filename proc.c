@@ -11,27 +11,29 @@
 #include "uproc.h"
 #endif
 
-#ifdef CS333_P3
+#ifdef CS333_P3P4
 struct StateLists {
-  struct proc* ready;
+  struct proc* ready;        //Able to be scheduled on processor
   struct proc* readyTail;
-  struct proc* free;
+  struct proc* free;         //Unused and able to be allocated into a new process
   struct proc* freeTail;
-  struct proc* sleep;
+  struct proc* sleep;        //Waiting on some future even
   struct proc* sleepTail;
-  struct proc* zombie;
+  struct proc* zombie;       //Waiting to be "reaped" by their parent proc or init proc
   struct proc* zombieTail;
-  struct proc* running;
+  struct proc* running;      //Currently executing on the CPU
   struct proc* runningTail;
-  struct proc* embryo;
+  struct proc* embryo;       //Currently being initialized
   struct proc* embryoTail;
 };
 #endif
 
 struct { 
-  struct spinlock lock;  
+  struct spinlock lock;   
   struct proc proc[NPROC];
-  struct StateLists pLists;
+#ifdef CS333_P3P4
+  struct StateLists pLists; 
+#endif
 } ptable;
 
 static struct proc *initproc;
@@ -68,21 +70,47 @@ pinit(void)
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
+
+// jallocproc //
+
 static struct proc*
 allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  
   acquire(&ptable.lock);
+
+  //Breh is this right???
+#ifndef CS333_P3P4
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
+#endif
+
+
+#ifdef CS333_P3P4
+  p = ptable.pLists.free;
+  while (p != 0) { 
+    if (p->state == UNUSED)
+      goto found;
+    else
+      p = p->next;
+  }
+#endif
+
   release(&ptable.lock);
   return 0;
 
-found:
+ found:
+  //Remove proc from free list
+  if (stateListRemove(&ptable.pLists.free, &ptable.pLists.freeTail, p) == -1)
+    panic("Called in allocproc(): stateListRemove returned -1 (couldn't remove)");
   p->state = EMBRYO;
+  //Add proc to the embryo list
+  if (stateListAdd(&ptable.pLists.embryo, &ptable.pLists.embryoTail, p) == -1)
+    panic("Called in allocproc(): stateListAdd failed");
+
   p->pid = nextpid++;
   release(&ptable.lock);
 
@@ -107,25 +135,36 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
   
-  #ifdef CS333_P1
+#ifdef CS333_P1
   p->start_ticks = ticks; //Set the starting ticks on alloc
-  #endif
+#endif
 
-  #ifdef CS333_P2 
+#ifdef CS333_P2 
   p->cpu_ticks_total = 0; //Total elapsed ticks
   p->cpu_ticks_in = 0;    //Ticks when scheduled
-  #endif
+#endif
 
   return p;
 }
 
 //PAGEBREAK: 32
 // Set up first user process.
+
+// juserinit //
+
 void
 userinit(void)
-{
+{  
+
+  acquire(&ptable.lock);
+  
+  initFreeList();     
+  initProcessLists(); //Init process pointers to zero
+
   struct proc *p;
-  extern char _binary_initcode_start[], _binary_initcode_size[]; 
+  extern char _binary_initcode_start[], _binary_initcode_size[];
+
+  release(&ptable.lock);
   
   p = allocproc();
   initproc = p;
@@ -142,15 +181,27 @@ userinit(void)
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
   
-  safestrcpy(p->name, "initcode", sizeof(p->name));
+  safestrcpy(p->name, "initcode", sizeof(p->name)); 
   p->cwd = namei("/");
+
+  acquire(&ptable.lock);
 
   p->state = RUNNABLE;
 
-  #ifdef CS333_P2
+#ifdef CS333_P3P4
+  if (stateListRemove(&ptable.pLists.embryo, &ptable.pLists.embryoTail, p) == -1)
+    panic("StateListRemove couldn't find process (proc.c userinit 164)");
+#endif
+
+  ptable.pLists.ready = p;         //Since this is the first proc, put it on the ready list
+  ptable.pLists.ready->next = 0;   //Set the next pointer to null
+
+  release(&ptable.lock); 
+
+#ifdef CS333_P2
   p->uid = DEFAULT_UID;
   p->gid = DEFAULT_GID;
-  #endif
+#endif
 
 }
 
@@ -215,11 +266,11 @@ fork(void)
   np->state = RUNNABLE;
   release(&ptable.lock);
 
-  #ifdef CS333_P2
+#ifdef CS333_P2
   //Give the new process the old old process's uid and gid
   np->uid = proc->uid;
   np->gid = proc->gid;
-  #endif
+#endif
 
   return pid;
 }
@@ -349,6 +400,8 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
+    //************ THIS IS OLD SCHEDULER *************************************/
+
     idle = 1;  // assume idle unless we schedule a process
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
@@ -364,12 +417,14 @@ scheduler(void)
       switchuvm(p);
       p->state = RUNNING;
 
-      #ifdef CS333_P2
+#ifdef CS333_P2
       proc->cpu_ticks_in = ticks; 
-      #endif
+#endif
 
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
+
+      //************ THIS IS OLD SCHEDULER *************************************/
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
@@ -384,11 +439,84 @@ scheduler(void)
   }
 }
 
+// jscheduler //
+
 #else
 void
 scheduler(void)
 {
+  struct proc *p;
+  int idle;  // for checking if processor is idle
+
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    idle = 1;  // assume idle unless we schedule a process
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+
+    //** CHANGE THIS TO go through ptable.readylist **// 
+    //p != 0
+    //p = p->next
+
+    //Transition from RUNNABLE state to RUNNING state
+    //Traverse the processes in the ready list and remove
+
+    // if possible (add it to the running list?)
+
+    //struct proc * p = ptable.pLists.ready;
+    p = ptable.pLists.ready;
+    while (p != 0) {  
+
+      //Make sure the proc is runnable
+      if (p->state == RUNNABLE) {
+
+        idle = 0;  
+        proc = p;
+        switchuvm(p);
+
+        p->state = RUNNING; //Change state to running
+
+        //Remove the proc from the ready list
+        if (stateListRemove(&ptable.pLists.ready, &ptable.pLists.readyTail, p) != 0)
+          panic("Called in scheduler: stateListRemove failed to remove process");
+            
+        //Put the proc onto the running list
+        if (stateListAdd(&ptable.pLists.running, &ptable.pLists.runningTail, p) != 0)
+          panic("Called in scheduler: stateListAdd() returned non-zero value");
   
+#ifdef CS333_P2
+        proc->cpu_ticks_in = ticks; 
+#endif              
+
+        swtch(&cpu->scheduler, proc->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        proc = 0;
+
+      }
+
+      p = p->next; 
+    }
+
+      
+    //Remove proc from readylist
+    //Catch value statelistremove
+    //panic if -1?
+
+    //Add back to the running list
+      
+    release(&ptable.lock);
+  }
+ 
+  // if idle, wait for next interrupt
+  if (idle) {
+    sti();
+    hlt();
+  }
 }
 #endif
 
@@ -409,9 +537,9 @@ sched(void)
     panic("sched interruptible");
   intena = cpu->intena;
 
-  #ifdef CS333_P2
+#ifdef CS333_P2
   proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
-  #endif
+#endif
 
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
@@ -486,6 +614,7 @@ sleep(void *chan, struct spinlock *lk)
 
 //PAGEBREAK!
 #ifndef CS333_P3P4
+
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
 static void
@@ -498,10 +627,29 @@ wakeup1(void *chan)
       p->state = RUNNABLE;
 }
 #else
+
+// jwakeup1 //
+
 static void
 wakeup1(void *chan)
 {
+  struct proc * p;
 
+  //Traverse the sleep list
+  p = ptable.pLists.sleep; 
+  while (p) {
+    if (p->chan == chan) {
+
+      //Remove from sleep list
+      if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
+        panic("Called from wakeup1: stateListsRemove failed");
+      p->state = RUNNABLE;
+
+      //Add to the ready list
+      if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p) == -1)
+        panic("Called from wakeup1: stateListsAdd failed");
+    }
+  }
 }
 #endif
 
@@ -538,11 +686,31 @@ kill(int pid)
   return -1;
 }
 #else
+
+// jkill //
+
 int
 kill(int pid)
 {
+  struct proc *p;
 
-  return 0;  // placeholder
+  acquire(&ptable.lock);
+  
+  //for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+
+  p = ptable.pLists.sleep; 
+  while (p) {    
+    if(p->pid == pid) { 
+      p->killed = 1;
+      // Wake process from sleep if necessary.
+      if(p->state == SLEEPING)
+        p->state = RUNNABLE;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
 }
 #endif
 
@@ -569,15 +737,15 @@ procdump(void)
   uint pc[10];
 
   //This code was provided by Mark Morrissey (but was altered)
-  #if defined (CS333_P3P4)
-  #define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
-  #elif defined (CS333_P2)
-  #define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
-  #elif defined (CS333_P1)
-  #define HEADER "PID\tState\tName\tElapsed\t PCs\n"
-  #else
-  #define HEADER "PID\tState\tName\t PCs\n"
-  #endif
+#if defined (CS333_P3P4)
+#define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+#elif defined (CS333_P2)
+#define HEADER "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+#elif defined (CS333_P1)
+#define HEADER "PID\tState\tName\tElapsed\t PCs\n"
+#else
+#define HEADER "PID\tState\tName\t PCs\n"
+#endif
 
   cprintf(HEADER);
 
@@ -589,15 +757,15 @@ procdump(void)
     else
       state = "???";
 
-    #if defined (CS333_P3P4)
+#if defined (CS333_P3P4)
     procDumpP3P4(p, state, ticks - p->start_ticks);
-    #elif defined (CS333_P2) 
+#elif defined (CS333_P2) 
     procDumpP2(p, state, ticks - p->start_ticks); 
-    #elif defined (CS333_P1)
+#elif defined (CS333_P1)
     procDumpP1(p, state, ticks - p->start_ticks);
-    #else
+#else
     procDump0(p, state);
-    #endif
+#endif
     
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
