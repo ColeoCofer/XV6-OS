@@ -53,12 +53,17 @@ static void assertState(struct proc * p, enum procstate state);
 extern int strcmp(const char *p, const char *q);
 #elif defined CS333_P2
 static void procDumpP2(struct proc *p, char *state, int elapsedTime);
+
 #elif CS333_P1
 static void procDumpP1(struct proc *p, char *state, int elapsed_time);
+
 #else
 static void procDump0(struct proc *p, char * state);
 #endif
+
+#if defined(CS333_P3P4) || defined(CS333_P2)
 static void printAsFloat(int totalTime);
+#endif
 
 
 void
@@ -91,7 +96,6 @@ allocproc(void)
 
 
   #ifdef CS333_P3P4
-  //No need to traverse the list
   if (ptable.pLists.free) {
     p = ptable.pLists.free;
     goto found;
@@ -137,6 +141,7 @@ allocproc(void)
 
     return 0;
   }
+
   sp = p->kstack + KSTACKSIZE;
 
   // Leave room for trap frame.
@@ -161,7 +166,7 @@ allocproc(void)
   p->cpu_ticks_total = 0; //Total elapsed ticks
   p->cpu_ticks_in = 0;    //Ticks when scheduled
   #endif
-
+    
   return p;
 }
 
@@ -174,6 +179,9 @@ void
 userinit(void)
 {  
 
+  struct proc *p;
+  extern char _binary_initcode_start[], _binary_initcode_size[];
+
   #ifdef CS333_P3P4
   acquire(&ptable.lock);
 
@@ -183,10 +191,6 @@ userinit(void)
   release(&ptable.lock);
   #endif
 
-  struct proc *p;
-  extern char _binary_initcode_start[], _binary_initcode_size[];
-  
-  
   p = allocproc();
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
@@ -202,7 +206,7 @@ userinit(void)
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
   
-  safestrcpy(p->name, "initcode", sizeof(p->name)); 
+  safestrcpy(p->name, "initcode", sizeof(p->name));  
   p->cwd = namei("/");
 
   #ifdef CS333_P3P4
@@ -212,7 +216,7 @@ userinit(void)
   if (stateListRemove(&ptable.pLists.embryo, &ptable.pLists.embryoTail, p) == -1)
     panic("Called in userinit: stateListRemove failed");
 
-  assertState(p, EMBRYO);
+  assertState(p, EMBRYO);  
   p->state = RUNNABLE;
   
   ptable.pLists.ready = p;         //Since this is the first proc, put it on the ready list
@@ -232,7 +236,7 @@ userinit(void)
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
-growproc(int n)
+growproc(int n) 
 {
   uint sz;
 
@@ -432,6 +436,9 @@ exit(void)
       wakeup1(initproc);
       }
   }
+
+  if (ptable.pLists.running)
+    cprintf("state: %d", ptable.pLists.running->state);
 
   if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, p) == -1)
     panic("Called from exit(): stateListRemove failed");
@@ -777,10 +784,13 @@ sleep(void *chan, struct spinlock *lk)
   #ifdef CS333_P3P4
   if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, proc) == -1)
     panic("Called in sleep: stateListRemove failed");
+
   assertState(proc, RUNNING);
   proc->state = SLEEPING;
+
   if (stateListAdd(&ptable.pLists.sleep, &ptable.pLists.sleepTail, proc) == -1)
     panic("Called in sleep: stateListAdd failed");
+  
   #endif
 
   #ifndef CS333_P3P4
@@ -788,7 +798,6 @@ sleep(void *chan, struct spinlock *lk)
   #endif
   sched();
 
-  // Tidy up.
   proc->chan = 0;
 
   // Reacquire original lock.
@@ -822,14 +831,13 @@ wakeup1(void *chan)
   struct proc * p;
 
   //Traverse the sleep list
-  p = ptable.pLists.sleep;
-  while (p) {
-    if (p->chan == chan) {
-
-      //Remove from sleep list
+  for (p = ptable.pLists.sleep; p; p = p->next) {
+    if (p->chan == chan) {            
+      //State Transition SLEEPING -> RUNNABLE
       if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
         panic("Called from wakeup1: stateListsRemove failed");
 
+      assertState(p, SLEEPING);
       p->state = RUNNABLE;
 
       //Add to the ready list
@@ -888,14 +896,13 @@ kill(int pid)
       p->killed = 1;
 
       #ifdef CS333_P3P4
-      //Remove from sleep list
+      //State Transition SLEEPING -> RUNNABLE
       if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
         panic("Called from kill: stateListsRemove failed");
 
       assertState(p, SLEEPING);
       p->state = RUNNABLE;
 
-      //Add to the ready list
       if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p) == -1)
         panic("Called from kill: stateListsAdd failed");
       #endif
@@ -904,6 +911,31 @@ kill(int pid)
       return 0;
     }
   }
+
+  for (p = ptable.pLists.embryo; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
+  for (p = ptable.pLists.ready; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
+  for (p = ptable.pLists.running; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
   release(&ptable.lock);
   return -1;
 }
@@ -988,7 +1020,7 @@ procDumpP3P4(struct proc *p, char *state, int elapsedTime)
   printAsFloat(p->cpu_ticks_total); cprintf("\t");
   cprintf("%s\t%d\t", state, p->sz);
 }
-#elif defined CS333_P2 OR 
+#elif defined CS333_P2
 
 static void
 procDumpP2(struct proc *p, char *state, int elapsedTime) 
@@ -999,7 +1031,7 @@ procDumpP2(struct proc *p, char *state, int elapsedTime)
     ppid = 1;
   else
     ppid = p->parent->pid;
-
+  
   cprintf("%d\t%s\t%d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid, ppid);
   printAsFloat(elapsedTime); cprintf("\t");
   printAsFloat(p->cpu_ticks_total); cprintf("\t");
@@ -1089,6 +1121,7 @@ procDump0(struct proc *p, char * state)
 }
 #endif
 
+#if defined(CS333_P3P4) || defined(CS333_P2)
 //Prints an integer as a floating point number
 static void
 printAsFloat(int totalTime)
@@ -1107,6 +1140,7 @@ printAsFloat(int totalTime)
   else
     cprintf("%d.%d", timeNum, timeRemainder);
 }
+#endif
 
 #ifdef CS333_P3P4
 
@@ -1120,6 +1154,32 @@ assertState(struct proc * p, enum procstate state)
     panic("Assert Failed");
   }
 }
+
+/*
+//Transitions state from one list to another list
+static int
+transitionStateTo(struct proc ** fromHead, struct proc ** fromTail,
+                  struct proc ** toHead, struct proc ** toTail,
+                  struct proc * p,
+                  enum procstate oldState, enum procstate newState,
+                  char * panicMessage)
+{
+  if (stateListRemove(&fromHead, &fromTail, p) == -1) {
+    //    cprintf();
+    //panic("Called from kill: stateListsRemove failed");
+  }
+
+  assertState(p, oldState);
+  p->state = newState;
+
+  //Add to the ready list
+  if (stateListAdd(&toHead, &toTail, p) == -1) {
+    
+    //    panic("Called from kill: stateListsAdd failed");
+  }
+
+}
+*/
 
 
 static int
