@@ -191,6 +191,11 @@ consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
 
+  #ifdef CS333_P3P4
+  int docontrol_f = 0, docontrol_r = 0,
+    docontrol_s = 0, docontrol_z = 0;
+  #endif
+
   acquire(&cons.lock);
   while((c = getc()) >= 0){
     switch(c){
@@ -209,7 +214,21 @@ consoleintr(int (*getc)(void))
         input.e--;
         consputc(BACKSPACE);
       }
+      #ifdef CS333_P3P4
       break;
+    case C('F'):
+      docontrol_f = 1;
+      break;
+    case C('R'):
+      docontrol_r = 1;
+      break;
+    case C('S'):
+      docontrol_s = 1;
+      break;
+    case C('Z'):
+      docontrol_z = 1;
+      break;
+      #endif
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
@@ -227,6 +246,20 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+  #ifdef CS333_P3P4
+  if (docontrol_f) {
+    control_f();
+  }
+  if (docontrol_r) {
+    control_r();
+  }
+  if (docontrol_s) {
+    control_s();
+  }
+  if (docontrol_z) {
+    control_z();
+  }
+  #endif
 }
 
 int

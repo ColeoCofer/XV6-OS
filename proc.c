@@ -508,22 +508,53 @@ exit(void)
   end_op();
   proc->cwd = 0;
 
-  acquire(&ptable.lock);
+  acquire(&ptable.lock); 
 
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
-  // Pass abandoned children to init.
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
+  //Embryo
+  for (p = ptable.pLists.embryo; p; p = p->next) {
+    if (p->parent == proc)
       p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
+  }
+
+  //Ready
+  for (p = ptable.pLists.ready; p; p = p->next) {
+    if (p->parent == proc)
+      p->parent = initproc;
+  }
+
+  //Sleep
+  for (p = ptable.pLists.sleep; p; p = p->next) {
+    if (p->parent == proc)
+      p->parent = initproc;
+  }
+
+  //Running
+  for (p = ptable.pLists.running; p; p = p->next) {
+    if (p->parent == proc)
+      p->parent = initproc;
+  }
+
+  //Zombie
+  for (p = ptable.pLists.zombie; p; p = p->next) {
+    if (p->parent == proc) {
+      p->parent = initproc;
+      wakeup1(initproc);
     }
   }
 
-  // Jump into the scheduler, never to return.
+  ///// State Transition RUNNING -> ZOMBIE
+  if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, proc) == -1)
+    panic("Called from exit(): stateListRemove failed");
+  assertState(proc, RUNNING);  
   proc->state = ZOMBIE;
+  if (stateListAdd(&ptable.pLists.zombie, &ptable.pLists.zombieTail, proc) == -1)
+    panic("Called from exit(): stateListAdd failed");
+  
+  
+  
   sched();
   panic("zombie exit");
 }
@@ -572,38 +603,80 @@ wait(void)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
 #else
+
 // jwait //
 int
 wait(void)
 {
-    struct proc *p;
+  struct proc *p;
   int havekids, pid;
 
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+    for(p = ptable.pLists.zombie; p; p = p->next) {
       if(p->parent != proc)
         continue;
+
       havekids = 1;
-      if(p->state == ZOMBIE){
-        // Found one.
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        p->state = UNUSED;
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        release(&ptable.lock);
-        return pid;
+
+      // Found one.
+      pid = p->pid;
+      kfree(p->kstack);
+      p->kstack = 0;
+      freevm(p->pgdir);
+      
+      ///// State Transition ZOMBIE -> UNUSED /////
+      if (stateListRemove(&ptable.pLists.zombie, &ptable.pLists.zombieTail, p) == -1)
+        panic("Called from wait(): stateListRemove failed");
+      assertState(p, ZOMBIE);
+      p->state = UNUSED;
+      if (stateListAdd(&ptable.pLists.free, &ptable.pLists.freeTail, p) == -1)
+        panic("Called from wait(): stateListAdd failed");
+      
+      p->pid = 0;
+      p->parent = 0;
+      p->name[0] = 0;
+      p->killed = 0;
+      release(&ptable.lock);
+      return pid;
+      
+    }
+
+    //Check for other processes in which there parent == proc
+    //Mark them as having kids, and 
+    for (p = ptable.pLists.ready; p; p = p->next) {
+      if (p->parent == proc) {
+        havekids = 1;
+        //goto foundKidNotZombie;
       }
     }
 
+    for (p = ptable.pLists.sleep; p; p = p->next) {
+      if (p->parent == proc) {
+        havekids = 1;
+        //goto foundKidNotZombie;
+      }
+    }
+
+    for (p = ptable.pLists.embryo; p; p = p->next) {
+      if (p->parent == proc) {
+        havekids = 1;
+        //goto foundKidNotZombie;
+      }
+    }
+
+    for (p = ptable.pLists.running; p; p = p->next) {
+      if (p->parent == proc) {
+        havekids = 1;
+        //goto foundKidNotZombie;
+      }
+    }
+    //  foundKidNotZombie:
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
       release(&ptable.lock);
@@ -676,32 +749,35 @@ scheduler(void)
 void
 scheduler(void)
 {
-    struct proc *p;
+  struct proc *p;
   int idle;  // for checking if processor is idle
 
   for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
+    
+    sti();     // Enable interrupts on this processor.
     idle = 1;  // assume idle unless we schedule a process
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+    acquire(&ptable.lock);
+    for (p = ptable.pLists.ready; p; p = p->next) {
       idle = 0;  // not idle this timeslice
       proc = p;
       switchuvm(p);
-      p->state = RUNNING;
 
+      ///// State Transition RUNNABLE -> RUNNING /////
+      if (stateListRemove(&ptable.pLists.ready, &ptable.pLists.readyTail, p) == -1)
+        panic("Called in scheduler: stateListRemove failed to remove process");
+      
+      assertState(p, RUNNABLE);
+      p->state = RUNNING; //Change state to running
+      
+      //Put the proc onto the running list
+      if (stateListAdd(&ptable.pLists.running, &ptable.pLists.runningTail, p) == -1)
+        panic("Called in scheduler: stateListAdd() returned non-zero value");
+      
       #ifdef CS333_P2
       proc->cpu_ticks_in = ticks; 
       #endif
-
+      
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -762,7 +838,14 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
+
+  if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, proc) == -1)
+    panic("Called in yield: stateListRemove failed");
+  assertState(proc, RUNNING);
   proc->state = RUNNABLE;
+  if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, proc) == -1)
+    panic("Called in yield: stateListAdd failed");
+
   sched();
   release(&ptable.lock);
 }
@@ -850,7 +933,17 @@ sleep(void *chan, struct spinlock *lk)
 
   // Go to sleep.
   proc->chan = chan;
+
+  ///// State Transition RUNNING -> SLEEPING /////
+  if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, proc) == -1)
+    panic("Called in sleep: stateListRemove failed");
+  
+  assertState(proc, RUNNING);
   proc->state = SLEEPING;
+  
+  if (stateListAdd(&ptable.pLists.sleep, &ptable.pLists.sleepTail, proc) == -1)
+    panic("Called in sleep: stateListAdd failed");
+
   sched();
 
   // Tidy up.
@@ -878,16 +971,29 @@ wakeup1(void *chan)
     if(p->state == SLEEPING && p->chan == chan)
       p->state = RUNNABLE;
 }
+
 #else
+
 // jwakeup1 //
 static void
 wakeup1(void *chan)
 {
   struct proc *p;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+  //Wakeup ALL sleeping processes
+  for (p = ptable.pLists.sleep; p; p = p->next) {
+    if (p->chan == chan) {
+      //State Transition SLEEPING -> RUNNABLE
+      if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
+        panic("Called from wakeup1: stateListsRemove failed");
+
+      assertState(p, SLEEPING);
       p->state = RUNNABLE;
+
+      if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p) == -1)
+        panic("Called from wakeup1: stateListsAdd failed");
+    }
+  }
 }
 #endif
 
@@ -931,16 +1037,52 @@ kill(int pid)
   struct proc *p;
 
   acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+  for (p = ptable.pLists.sleep; p; p = p->next) {
     if(p->pid == pid){
       p->killed = 1;
-      // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
-        p->state = RUNNABLE;
+
+      ///// State Transition SLEEPING -> RUNNABLE
+      if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
+        panic("Called from kill: stateListsRemove failed");
+      
+      assertState(p, SLEEPING);
+      p->state = RUNNABLE;
+      if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p) == -1)
+        panic("Called from kill: stateListsAdd failed");
+      
       release(&ptable.lock);
       return 0;
     }
   }
+
+  //Embryo
+  for (p = ptable.pLists.embryo; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
+  //Ready
+  for (p = ptable.pLists.ready; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
+  //Running
+  for (p = ptable.pLists.running; p; p = p->next) {
+    if (p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+
   release(&ptable.lock);
   return -1;
 }
@@ -1250,6 +1392,81 @@ assertState(struct proc * p, enum procstate state)
     panic("Assert Failed");
   }
 }
+
+//Dumps the ready list
+void
+control_r(void)
+{
+  struct proc * p;
+
+  cprintf("Ready List Processes:\n");
+  if (ptable.pLists.ready) {
+    for (p = ptable.pLists.ready; p; p = p->next) {
+      if (p->next)
+        cprintf("%d -> ", p->pid);
+      else
+        cprintf("%d\n", p->pid); 
+    }
+  } else {
+    cprintf("Ready list is empty.\n");
+  }
+
+  
+}
+
+//Dumps the free list
+void
+control_f(void)
+{
+  uint count = 0;
+  struct proc * p;
+
+  for (p = ptable.pLists.free; p; p = p->next) 
+    ++count;
+
+  cprintf("Free List Processes: %d\n", count);
+}
+
+//Dumps the free list
+void
+control_s(void)
+{
+  struct proc * p;
+
+  cprintf("Sleep List Processes:\n");
+  if (ptable.pLists.sleep) {
+    for (p = ptable.pLists.sleep; p; p = p->next) {
+      if (p->next)
+        cprintf("%d -> ", p->pid);
+      else
+        cprintf("%d\n", p->pid); 
+    }
+  } else {
+    cprintf("Sleep list is empty.\n");
+  }
+
+}
+
+//Dumps the zombie list
+void
+control_z(void)
+{
+
+  struct proc * p;
+
+  cprintf("Zombie List Processes:\n");
+  if (ptable.pLists.zombie) {
+    for (p = ptable.pLists.zombie; p; p = p->next) {
+      if (p->next)
+        cprintf("%d -> ", p->pid);
+      else
+        cprintf("%d\n", p->pid); 
+    }
+  } else {
+    cprintf("Zombie list is empty.\n");
+  }
+}
+
 
 #endif
 
