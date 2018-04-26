@@ -373,7 +373,7 @@ fork(void)
 #else
 // jfork //
 int
-fork(void)
+fork(void) 
 {
   int i, pid;
   struct proc *np;
@@ -392,8 +392,7 @@ fork(void)
     if (stateListRemove(&ptable.pLists.embryo, &ptable.pLists.embryoTail, np) == -1)
       panic("Called from fork: stateListRemove failed");
     assertState(np, EMBRYO);
-    np->state = UNUSED;
-    
+    np->state = UNUSED;    
     if (stateListAdd(&ptable.pLists.free, &ptable.pLists.freeTail, np) == -1)
       panic("Called from fork: stateListAdd failed");
     release(&ptable.lock);
@@ -553,8 +552,6 @@ exit(void)
   if (stateListAdd(&ptable.pLists.zombie, &ptable.pLists.zombieTail, proc) == -1)
     panic("Called from exit(): stateListAdd failed");
   
-  
-  
   sched();
   panic("zombie exit");
 }
@@ -613,7 +610,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
 
-  acquire(&ptable.lock);
+  acquire(&ptable.lock); 
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
@@ -652,31 +649,26 @@ wait(void)
     for (p = ptable.pLists.ready; p; p = p->next) {
       if (p->parent == proc) {
         havekids = 1;
-        //goto foundKidNotZombie;
       }
     }
 
     for (p = ptable.pLists.sleep; p; p = p->next) {
       if (p->parent == proc) {
         havekids = 1;
-        //goto foundKidNotZombie;
       }
     }
 
     for (p = ptable.pLists.embryo; p; p = p->next) {
       if (p->parent == proc) {
         havekids = 1;
-        //goto foundKidNotZombie;
       }
     }
 
     for (p = ptable.pLists.running; p; p = p->next) {
       if (p->parent == proc) {
         havekids = 1;
-        //goto foundKidNotZombie;
       }
     }
-    //  foundKidNotZombie:
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
       release(&ptable.lock);
@@ -974,7 +966,7 @@ wakeup1(void *chan)
 
 #else
 
-// jwakeup1 //
+// jwakeup1 // 
 static void
 wakeup1(void *chan)
 {
