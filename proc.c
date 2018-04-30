@@ -11,8 +11,8 @@
 #include "uproc.h"
 #endif
 
-#ifdef CS333_P3P4
-struct StateLists {
+#ifdef CS333_P3P4 
+struct StateLists { 
   struct proc* ready;        //Able to be scheduled on processor
   struct proc* readyTail;
   struct proc* free;         //Unused and able to be allocated into a new process
@@ -32,7 +32,7 @@ struct {
   struct spinlock lock;
   struct proc proc[NPROC];
   #ifdef CS333_P3P4
-  struct StateLists pLists;
+  struct StateLists pLists; 
   #endif
 } ptable;
 
@@ -205,9 +205,9 @@ found:
 
 #ifndef CS333_P3P4
 //PAGEBREAK: 32
-// Set up first user process.
+// Set up first user process. 
 void
-userinit(void)
+userinit(void) 
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[]; 
@@ -258,7 +258,7 @@ userinit(void)
   
   p = allocproc();
   initproc = p;
-  if((p->pgdir = setupkvm()) == 0)
+  if((p->pgdir = setupkvm()) == 0) 
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
@@ -619,7 +619,7 @@ wait(void)
       if(p->parent != proc)
         continue;
 
-      havekids = 1;
+      havekids = 1; 
 
       // Found one.
       pid = p->pid;
@@ -643,9 +643,9 @@ wait(void)
       return pid;
       
     }
-
-    //Check for other processes in which there parent == proc
-    //Mark them as having kids, and 
+    
+    //Check for other processes in which the parent == proc
+    //Mark them as having kids
     for (p = ptable.pLists.ready; p; p = p->next) {
       if (p->parent == proc) {
         havekids = 1;
@@ -657,8 +657,8 @@ wait(void)
         havekids = 1;
       }
     }
-
-    for (p = ptable.pLists.embryo; p; p = p->next) {
+    
+    for (p = ptable.pLists.embryo; p; p = p->next) { 
       if (p->parent == proc) {
         havekids = 1;
       }
@@ -831,10 +831,11 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
 
+  //State Transition RUNNING -> RUNNABLE
   if (stateListRemove(&ptable.pLists.running, &ptable.pLists.runningTail, proc) == -1)
     panic("Called in yield: stateListRemove failed");
   assertState(proc, RUNNING);
-  proc->state = RUNNABLE;
+  proc->state = RUNNABLE; 
   if (stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, proc) == -1)
     panic("Called in yield: stateListAdd failed");
 
@@ -1035,7 +1036,7 @@ kill(int pid)
       p->killed = 1;
 
       ///// State Transition SLEEPING -> RUNNABLE
-      if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1)
+      if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1) 
         panic("Called from kill: stateListsRemove failed");
       
       assertState(p, SLEEPING);
@@ -1361,7 +1362,7 @@ initProcessLists(void) {
 }
 
 static void
-initFreeList(void) {
+initFreeList(void) { 
   if (!holding(&ptable.lock)) {
     panic("acquire the ptable lock before calling initFreeList\n");
   }
@@ -1402,8 +1403,6 @@ control_r(void)
   } else {
     cprintf("Ready list is empty.\n");
   }
-
-  
 }
 
 //Dumps the free list
@@ -1458,7 +1457,6 @@ control_z(void)
     cprintf("Zombie list is empty.\n");
   }
 }
-
 
 #endif
 
