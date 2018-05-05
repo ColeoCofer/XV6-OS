@@ -513,7 +513,7 @@ exit(void)
   wakeup1(proc->parent);
 
   //Embryo
-  for (p = ptable.pLists.embryo; p; p = p->next) {
+  for (p = ptable.pLists.embryo; p; p = p->next) { 
     if (p->parent == proc)
       p->parent = initproc;
   }
@@ -537,7 +537,7 @@ exit(void)
   }
 
   //Zombie
-  for (p = ptable.pLists.zombie; p; p = p->next) {
+  for (p = ptable.pLists.zombie; p; p = p->next) { 
     if (p->parent == proc) {
       p->parent = initproc;
       wakeup1(initproc);
@@ -615,7 +615,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
 
-    for(p = ptable.pLists.zombie; p; p = p->next) {
+    for(p = ptable.pLists.zombie; p; p = p->next) { 
       if(p->parent != proc)
         continue;
 
@@ -646,7 +646,7 @@ wait(void)
     
     //Check for other processes in which the parent == proc
     //Mark them as having kids
-    for (p = ptable.pLists.ready; p; p = p->next) {
+    for (p = ptable.pLists.ready; p; p = p->next) { 
       if (p->parent == proc) {
         havekids = 1;
       }
@@ -669,6 +669,7 @@ wait(void)
         havekids = 1;
       }
     }
+
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
       release(&ptable.lock);
@@ -1035,7 +1036,7 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
 
-      ///// State Transition SLEEPING -> RUNNABLE
+      ///// State Transition SLEEPING -> RUNNABLE 
       if (stateListRemove(&ptable.pLists.sleep, &ptable.pLists.sleepTail, p) == -1) 
         panic("Called from kill: stateListsRemove failed");
       
@@ -1047,7 +1048,7 @@ kill(int pid)
       release(&ptable.lock);
       return 0;
     }
-  }
+  } 
 
   //Embryo
   for (p = ptable.pLists.embryo; p; p = p->next) {
@@ -1151,7 +1152,7 @@ procDumpP3P4(struct proc *p, char *state, int elapsedTime)
   //Find out the ppid
   uint ppid = 0;
   if (!p->parent)
-    ppid = 1;
+    ppid = 1; 
   else
     ppid = p->parent->pid;
 
@@ -1237,7 +1238,7 @@ getprocs(uint max, struct uproc* table)
   
   //Max is above the maximum amount of processes
   if (max > NPROC)
-    return -1;
+    max = NPROC;
 
   struct proc * currProc;
   acquire(&ptable.lock);
@@ -1274,13 +1275,13 @@ getprocs(uint max, struct uproc* table)
       else if (currProc->state == ZOMBIE)
         safestrcpy(table[i].state, states[ZOMBIE], sizeof("zombie")); 
 
-      ++i;
+      ++i; 
     }
   }
   
   release(&ptable.lock);
-
-  return i;
+  
+  return i; 
 }
 
 #endif

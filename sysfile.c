@@ -392,7 +392,7 @@ sys_chdir(void)
 }
 
 int
-sys_exec(void)
+sys_exec(void) 
 {
   char *path, *argv[MAXARG];
   int i;
