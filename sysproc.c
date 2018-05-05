@@ -164,7 +164,6 @@ sys_setgid(void)
   return 0;
 }
 
-
 int
 sys_getprocs(void) 
 {
@@ -175,12 +174,8 @@ sys_getprocs(void)
   struct uproc *ptable;
   if (argptr(1, (void*) &ptable, sizeof(&ptable)) < 0)
     return -1;
-  #ifndef CS333_P3P4  
+  
   return getprocs(max, ptable);
-  #else
-  return 0;
-  #endif
 }
-
 
 #endif

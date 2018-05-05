@@ -79,7 +79,7 @@ struct proc {
   #endif
 
   #ifdef CS333_P3P4
-  struct proc * next;          // Pointer to the next proc list
+  struct proc * next;          //pointer to the next proc
   #endif
 
 };

@@ -122,6 +122,10 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void            control_f(void);
+void            control_r(void);
+void            control_s(void);
+void            control_z(void);
 
 #ifdef CS333_P2
 int             getprocs(uint max, struct uproc* table);

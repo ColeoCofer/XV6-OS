@@ -1,6 +1,9 @@
 struct stat;
 struct rtcdate;
+
+#ifdef CS333_P3P4
 struct uproc;
+#endif
 
 // system calls
 int fork(void);
